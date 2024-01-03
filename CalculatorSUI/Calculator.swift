@@ -34,16 +34,14 @@ class Calculator: ObservableObject {
             reset()
 
         } else if label == "=" {
-            equalsClocked()
+            equalsClicked()
         } else if label == "." {
             decimalClicked()
         } else if let value = Double(label) {
             numberPressed(value: value)
         } else {
-            operatorPressed(op: Operator())
-            
+            operatorPressed(op: Operator(label))
         }
-
     }
     
     func setDisplayValue(number: Double) {
@@ -67,13 +65,71 @@ class Calculator: ObservableObject {
         equaled = false
         decimalPlace = 0
     }
+    
+    // Returns true of division by 0 could happen
+    func checkForDivision() -> Bool {
+        if currentOp!.isDivison && (currentNumber == nil && previousNumber == 0 || currentNumber == 0) {
+            displayValue = "Error"
+            reset()
+            return true
+        }
+        return false
+    }
 
-    func equalsClocked() {
+    func equalsClicked() {
 
+        // Check if we have an operation to perform
+        if currentOp != nil {
+
+            // Reset the decimal place for the current number
+            decimalPlace = 0
+
+            // Guard for division by 0
+            if checkForDivision() { return }
+
+            // Check if we have at least one operand
+            if currentNumber != nil || previousNumber != nil {
+                // Compute the total
+                let total = currentOp!.op(previousNumber ?? currentNumber!, currentNumber ?? previousNumber!)
+
+                // Update the first operand
+                if currentNumber == nil {
+                    currentNumber = previousNumber
+                }
+
+                // Update the second operand
+                previousNumber = total
+
+
+                // Set the equaled flag
+                equaled = true
+
+                // Update the UI
+                setDisplayValue(number: total)
+            }
+        }
     }
     
     func decimalClicked() {
+        
+        // If equals was pressed, reset the current numbers
+        if equaled {
+            currentNumber = nil
+            previousNumber = nil
+            equaled = false
+        }
 
+        // If a "." was typed first, set the current number
+        if currentNumber == nil {
+            currentNumber = 0
+        }
+
+        // Set the decimal place
+        decimalPlace = 1
+
+        // Update the UI
+        setDisplayValue(number: currentNumber!)
+        displayValue.append(".")
     }
 
     func numberPressed(value: Double) {
@@ -106,7 +162,33 @@ class Calculator: ObservableObject {
     }
 
     func operatorPressed(op: Operator) {
+        
+        // Reset the decimal
+        decimalPlace = 0
 
+        // If equals was pressed, reset the current number
+        if equaled {
+            currentNumber = nil
+            equaled = false
+        }
+
+        // If we have two operands, compute them
+        if currentNumber != nil && previousNumber != nil {
+            if checkForDivision() { return }
+            let total = currentOp!.op(previousNumber!, currentNumber!)
+            previousNumber = total
+            currentNumber = nil
+
+            // Update the UI
+            setDisplayValue(number: total)
+
+            // If only number has been given, move it to the second operand
+        } else if previousNumber == nil {
+            previousNumber = currentNumber
+            currentNumber = nil
+        }
+
+        currentOp = op
     }
 }
 
